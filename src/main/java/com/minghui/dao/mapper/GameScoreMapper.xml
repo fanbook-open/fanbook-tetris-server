@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.minghui.dao.GameScoreMapper">
+
+    <resultMap id="userGameScoreMap" type="com.minghui.entity.UserGameScore">
+        <id property="scoreId" column="SCORE_ID"/>
+        <result property="userId" column="USER_ID"/>
+        <result property="gameId" column="GAME_ID"/>
+        <result property="score" column="SCORE"/>
+        <result property="serverId" column="SERVER_ID"/>
+        <result property="updateDatetime" column="UPDATE_DATETIME"/>
+        <result property="serverId" column="SERVER_ID"/>
+        <result property="top" column="TOP"/>
+        <result property="rank" column="rank"/>
+    </resultMap>
+
+    <!-- 查询该用户的最高分 -->
+    <select id="queryMaxScoreByUserId" resultMap="userGameScoreMap">
+        select *
+        from TM_USER_GAME_SCORE
+        where TOP = 1
+          and SERVER_ID = #{serverId}
+          and GAME_ID = #{gameId}
+          and USER_ID = #{userId}
+    </select>
+
+    <!-- 查询历史得分总榜 -->
+    <select id="queryTotalScoreRank" resultMap="userGameScoreMap" parameterType="string">
+        select USER_ID, max(SCORE) as SCORE
+        from TM_USER_GAME_SCORE
+        where SERVER_ID = #{serverId}
+          and GAME_ID = #{gameId}
+        group by USER_ID
+        order by max(SCORE) desc
+    </select>
+
+    <!-- 查询今日得分总榜 -->
+    <select id="queryTodayScoreRank" resultMap="userGameScoreMap" parameterType="string">
+        select USER_ID, max(SCORE) as SCORE
+        from TM_USER_GAME_SCORE
+        where SERVER_ID = #{serverId}
+          and GAME_ID = #{gameId}
+          and date (UPDATE_DATETIME) = curdate()
+        group by USER_ID
+        order by max(SCORE) desc
+    </select>
+
+    <!-- 查询历史得分第一名 -->
+    <select id="queryTotalFirstScore" resultMap="userGameScoreMap" parameterType="string">
+        select USER_ID, max(SCORE) as SCORE
+        from TM_USER_GAME_SCORE
+        where SERVER_ID = #{serverId}
+        group by USER_ID
+        order by max(SCORE) desc limit 1
+    </select>
+
+    <!-- 查询今日得分第一名 -->
+    <select id="queryTodayFirstScore" resultMap="userGameScoreMap" parameterType="string">
+        select USER_ID, max(SCORE) as SCORE
+        from TM_USER_GAME_SCORE
+        where SERVER_ID = #{serverId} and date (UPDATE_DATETIME) = curdate()
+        group by USER_ID
+        order by max(SCORE) desc limit 1
+    </select>
+
+
+    <select id="queryMyTotalRankScore" resultType="com.minghui.entity.UserGameScore">
+        SELECT t2.USER_ID, t2.SCORE, t2.rank
+        FROM (
+                 SELECT t1.*, @rank := @rank + 1 AS rank
+                 FROM
+                     (SELECT @rank := 0) r,
+                     (SELECT USER_ID, MAX(SCORE) AS SCORE FROM TM_USER_GAME_SCORE
+                     WHERE SERVER_ID=#{serverId} AND GAME_ID=#{gameId} GROUP BY USER_ID ORDER BY MAX(SCORE) DESC) AS t1) t2
+        WHERE USER_ID = #{userId}
+    </select>
+
+    <select id="queryMyTodayRankScore" resultType="com.minghui.entity.UserGameScore">
+        SELECT t2.USER_ID, t2.SCORE, t2.rank
+        FROM (
+                 SELECT t1.*, @rank := @rank + 1 AS rank
+                 FROM
+                     (SELECT @rank := 0) r,
+                     (SELECT USER_ID, MAX(SCORE) AS SCORE FROM TM_USER_GAME_SCORE
+                     WHERE SERVER_ID=#{serverId} AND GAME_ID=#{gameId} AND date (UPDATE_DATETIME) = curdate() GROUP BY USER_ID ORDER BY MAX(SCORE) DESC) AS t1) t2
+        WHERE USER_ID = #{userId}
+    </select>
+
+    <select id="queryTodayMaxScore" resultType="long">
+        select max(score)
+        from TM_USER_GAME_SCORE
+        where SERVER_ID = #{serverId}
+          and GAME_ID = #{gameId}
+          and date (UPDATE_DATETIME) = curdate()
+    </select>
+    <select id="queryTodayRankScore" resultType="com.minghui.entity.UserGameScore">
+        SELECT t2.USER_ID, t2.SCORE, t2.rank
+        FROM (
+                 SELECT t1.*, @rank := @rank + 1 AS rank
+                 FROM
+                     (SELECT @rank := 0) r,
+                     (SELECT USER_ID, MAX(SCORE) AS SCORE FROM TM_USER_GAME_SCORE
+                     WHERE SERVER_ID=#{serverId} AND date (UPDATE_DATETIME) = #{time} GROUP BY USER_ID ORDER BY MAX(SCORE) DESC) AS t1) t2
+        where t2.rank  <![CDATA[ <= ]]> #{rank}
+    </select>
+    <select id="queryTodayRankScoreToDay" resultType="com.minghui.entity.UserGameScore">
+        SELECT t2.USER_ID, t2.SCORE, t2.rank
+        FROM (
+                 SELECT t1.*, @rank := @rank + 1 AS rank
+                 FROM
+                     (SELECT @rank := 0) r,
+                     (SELECT USER_ID, MAX(SCORE) AS SCORE FROM TM_USER_GAME_SCORE
+                     WHERE SERVER_ID=#{serverId} AND date (UPDATE_DATETIME) = curdate()-#{day} GROUP BY USER_ID ORDER BY MAX(SCORE) DESC) AS t1) t2
+        where t2.rank  <![CDATA[ <= ]]> #{rank}
+    </select>
+</mapper>
